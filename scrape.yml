@@ -37,7 +37,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml dbfread playwright
+          pip install -r scraper/requirements.txt
 
       # ── Playwright ──────────────────────────────────────────────────────
       - name: Install Playwright + Chromium
@@ -54,6 +54,8 @@ jobs:
         run: python scraper/fetch.py
         env:
           PYTHONUNBUFFERED: "1"
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
 
       # ── Commit results ───────────────────────────────────────────────────
       - name: Commit & push updated records
