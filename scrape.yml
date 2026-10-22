@@ -56,6 +56,29 @@ jobs:
           PYTHONUNBUFFERED: "1"
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          SUBTRST_SHEET_ID: ${{ secrets.SUBTRST_SHEET_ID }}
+
+      # ── Skip trace top 100 new leads ─────────────────────────────────────
+      - name: Skip trace top 100 leads
+        run: python scraper/skip_trace.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          SKIP_TRACE_GREEN_LIGHT: ${{ secrets.SKIP_TRACE_GREEN_LIGHT }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          DEALMACHINE_API_KEY: ${{ secrets.DEALMACHINE_API_KEY }}
+
+      # ── Push skip traced leads to GHL (Jordan calls at 9am CT) ───────────
+      - name: Push scraped leads to GHL
+        run: python scraper/ghl_push.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          GHL_PIPELINE_ID: ${{ secrets.GHL_PIPELINE_ID }}
+          GHL_STAGE_ID: ${{ secrets.GHL_STAGE_ID }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
 
       # ── Commit results ───────────────────────────────────────────────────
       - name: Commit & push updated records
