@@ -30,8 +30,9 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # ── Config ─────────────────────────────────────────────────────────────────
-SHEET_ID       = os.environ.get("GOOGLE_SHEET_ID", "1mC-bTqyRB-VHlLdNCzCfkaPRAq0TsLYSc93JhjbiVJk")
-BASE_URL       = "https://bexar.tx.publicsearch.us"
+SHEET_ID         = os.environ.get("GOOGLE_SHEET_ID", "1mC-bTqyRB-VHlLdNCzCfkaPRAq0TsLYSc93JhjbiVJk")
+SUBTRST_SHEET_ID = os.environ.get("SUBTRST_SHEET_ID", "1njU3FG3_gtzdhJeitL2sE-bXKPMgR-kYgVDwqmCMbMc")
+BASE_URL         = "https://bexar.tx.publicsearch.us"
 DATA_DIR       = Path(__file__).parent.parent / "data"
 RECORDS_FILE   = DATA_DIR / "records.json"
 
@@ -58,11 +59,10 @@ SHEET_HEADERS = [
 ]
 
 # ── Google Sheets auth ──────────────────────────────────────────────────────
-def get_sheet():
+def get_gspread_client():
     raw = os.environ.get("GOOGLE_CREDENTIALS", "")
     if not raw:
         raise ValueError("GOOGLE_CREDENTIALS env var not set")
-    # Accept raw JSON or base64-encoded JSON
     try:
         creds_dict = json.loads(raw)
     except json.JSONDecodeError:
@@ -73,8 +73,15 @@ def get_sheet():
         "https://www.googleapis.com/auth/drive",
     ]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-    client = gspread.authorize(creds)
+    return gspread.authorize(creds)
+
+def get_sheet():
+    client = get_gspread_client()
     return client.open_by_key(SHEET_ID).sheet1
+
+def get_subtrst_sheet():
+    client = get_gspread_client()
+    return client.open_by_key(SUBTRST_SHEET_ID).sheet1
 
 
 def load_existing_doc_numbers(sheet):
@@ -317,10 +324,13 @@ async def scrape_all() -> list[dict]:
 async def main():
     DATA_DIR.mkdir(exist_ok=True)
 
-    print("Connecting to Google Sheet...")
+    print("Connecting to Google Sheets...")
     sheet = get_sheet()
+    subtrst_sheet = get_subtrst_sheet()
     existing_doc_numbers = load_existing_doc_numbers(sheet)
-    print(f"  {len(existing_doc_numbers)} existing records in sheet")
+    existing_subtrst_doc_numbers = load_existing_doc_numbers(subtrst_sheet)
+    print(f"  {len(existing_doc_numbers)} existing records in master sheet")
+    print(f"  {len(existing_subtrst_doc_numbers)} existing records in SUBTRST sheet")
 
     print("Starting Bexar County Clerk scrape...")
     raw_records = await scrape_all()
@@ -328,7 +338,9 @@ async def main():
 
     # Score, deduplicate, and prepare rows
     new_rows = []
+    new_subtrst_rows = []
     seen_doc_nums = set(existing_doc_numbers)
+    seen_subtrst_doc_nums = set(existing_subtrst_doc_numbers)
 
     for rec in raw_records:
         doc_num = rec.get("doc_number", "").strip()
@@ -365,15 +377,27 @@ async def main():
         ]
         new_rows.append(row)
 
-    print(f"New records to append: {len(new_rows)}")
+        # Also copy SUBTRST leads to the dedicated sheet
+        if rec.get("doc_type_code") == "SUBTRST" and doc_num not in seen_subtrst_doc_nums:
+            seen_subtrst_doc_nums.add(doc_num)
+            new_subtrst_rows.append(row)
+
+    print(f"New records to append to master: {len(new_rows)}")
+    print(f"New SUBTRST records to append to SUBTRST sheet: {len(new_subtrst_rows)}")
 
     if new_rows:
-        # Sort by score descending so hottest leads are at top
         new_rows.sort(key=lambda r: int(r[15]) if r[15].isdigit() else 0, reverse=True)
         sheet.append_rows(new_rows, value_input_option="USER_ENTERED")
-        print(f"✅ Appended {len(new_rows)} new leads to Google Sheet")
+        print(f"✅ Appended {len(new_rows)} new leads to Master Sheet")
     else:
         print("No new leads found today.")
+
+    if new_subtrst_rows:
+        new_subtrst_rows.sort(key=lambda r: int(r[15]) if r[15].isdigit() else 0, reverse=True)
+        subtrst_sheet.append_rows(new_subtrst_rows, value_input_option="USER_ENTERED")
+        print(f"✅ Appended {len(new_subtrst_rows)} new SUBTRST leads to SUBTRST Sheet")
+    else:
+        print("No new SUBTRST leads today.")
 
     # Save local records.json for GitHub Pages dashboard
     all_records_json = []
