@@ -267,7 +267,8 @@ async def scrape_doc_type(page, doc_code: str, doc_label: str, search_term: str,
             await page.wait_for_timeout(2000)
             page_num += 1
 
-            if page_num > 20:  # safety cap
+            if page_num > 5:  # safety cap — 5 pages max per doc type (~250 records)
+                print(f"    Hit page cap (5 pages) — stopping pagination")
                 break
 
     except PWTimeout:
