@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: "scrape"
@@ -90,20 +88,3 @@ jobs:
             git commit -m "chore: update leads $(date -u +%Y-%m-%d)"
           git push
 
-      # ── Deploy dashboard to GitHub Pages ─────────────────────────────────
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dashboard/
-
-  deploy-pages:
-    needs: scrape
-    runs-on: ubuntu-22.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
