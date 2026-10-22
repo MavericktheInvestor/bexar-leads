@@ -309,9 +309,14 @@ async def scrape_all() -> list[dict]:
                     pass
 
         for doc_code, doc_label, search_term in DOC_TYPES:
-            records = await scrape_doc_type(
-                page, doc_code, doc_label, search_term, LOOKBACK_DAYS
-            )
+            try:
+                records = await asyncio.wait_for(
+                    scrape_doc_type(page, doc_code, doc_label, search_term, LOOKBACK_DAYS),
+                    timeout=480  # 8 minutes max per doc type
+                )
+            except asyncio.TimeoutError:
+                print(f"  ⏱ Timeout on {doc_label} after 8 minutes — skipping")
+                records = []
             all_records.extend(records)
             await page.wait_for_timeout(1500)  # be polite between searches
 
