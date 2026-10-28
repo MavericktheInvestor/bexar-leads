@@ -46,7 +46,7 @@ DOC_TYPES = [
 ]
 
 # How many days back to look each run
-LOOKBACK_DAYS = 7
+LOOKBACK_DAYS = 30
 
 # Sheet columns (must match header row exactly)
 SHEET_HEADERS = [
