@@ -81,7 +81,12 @@ def get_sheet():
 
 def get_subtrst_sheet():
     client = get_gspread_client()
-    return client.open_by_key(SUBTRST_SHEET_ID).sheet1
+    spreadsheet = client.open_by_key(SUBTRST_SHEET_ID)
+    # Try to open by tab name first, fall back to first sheet
+    try:
+        return spreadsheet.worksheet("SUBTRST")
+    except Exception:
+        return spreadsheet.sheet1
 
 
 def load_existing_doc_numbers(sheet):
